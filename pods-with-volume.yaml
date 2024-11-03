@@ -1,0 +1,100 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-name
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bb-configmap
+data:
+  configKey: configValue
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bb-secret
+type: Opaque
+data:
+  secretKey: c2VjcmV0VmFsdWU=  # Base64 encoded value
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myfrontend-pod
+spec:
+  containers:
+    - name: myfrontend
+      image: nginx
+      volumeMounts:
+      - mountPath: "/var/www/html"
+        name: mypd
+      resources:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "256Mi"
+          cpu: "200m"
+  volumes:
+    - name: mypd
+      persistentVolumeClaim:
+        claimName: pvc-name
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: busybox-config-pod
+spec:
+  containers:
+    - name: busybox-container
+      image: busybox
+      volumeMounts:
+        - name: config-dir
+          mountPath: /etc/config
+      resources:
+        requests:
+          memory: "64Mi"
+          cpu: "50m"
+        limits:
+          memory: "128Mi"
+          cpu: "100m"
+  volumes:
+    - name: config-dir
+      configMap:
+        name: bb-configmap
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: busybox-secret-pod
+spec:
+  containers:
+  - name: busybox-container
+    image: busybox
+    volumeMounts:
+    - name: secret-dir
+      mountPath: /etc/secret
+      readOnly: true
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "50m"
+      limits:
+        memory: "128Mi"
+        cpu: "100m"
+  volumes:
+  - name: secret-dir
+    secret:
+      secretName: bb-secret
